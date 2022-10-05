@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+import hashlib
 
 USER_ROLES = (
     ('user', 'User'),
@@ -35,6 +36,23 @@ class User(AbstractUser):
         max_length=254,
         verbose_name='Адрес электронной почты'
     )
+    email_is_verified = models.BooleanField(
+        default=False,
+        verbose_name='Проверен ли е-мейл'
+    )
+
+    def get_hash(self):
+        constant_data = str(self.id) + str(self.date_joined)
+        return hashlib.md5(constant_data.encode()).hexdigest()
+
+
+class Title(models.Model):
+    name = models.CharField(max_length=100)
+    year = models.SmallIntegerField(
+        verbose_name='Год создания',
+        null=True
+    )
+    category = models.CharField(max_length=100)
 
 
 class Review(models.Model):
