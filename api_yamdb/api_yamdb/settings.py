@@ -1,4 +1,8 @@
+import logging
 import os
+import sys
+
+from dotenv import load_dotenv, find_dotenv
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,6 +14,29 @@ SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+
+# Get token from .env and check if it's available
+logging.basicConfig(
+    level=logging.INFO,
+    format=(
+        '%(asctime)s [%(levelname)s] '
+        '%(filename)s >> %(lineno)d '
+        '[%(message)s]'
+    ),
+    handlers=[logging.StreamHandler(stream=sys.stdout)]
+)
+load_dotenv(find_dotenv())
+TOKEN_SECRET = os.getenv(
+    'TOKEN_SECRET_KEY',
+    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzb21lIjoicGF5bG9hZCJ9.Joh1R2dYzkRvDkqv3sygm5YyK8Gi4ShZqbhK2gxcs2U'
+)
+if not TOKEN_SECRET:
+    message = (
+        'Не удалось загрузить все переменные из окружения. Переменные:\n'
+        f'TOKEN_SECRET_KEY: {TOKEN_SECRET}'
+    )
+    logging.critical(message)
+    sys.exit(message)
 
 
 # Application definition
@@ -103,3 +130,5 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 STATICFILES_DIRS = (os.path.join(BASE_DIR, 'static/'),)
+
+AUTH_USER_MODEL = 'reviews.User'
