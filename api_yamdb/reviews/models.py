@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+import hashlib
+
 from .validators import year_validator
 
 USER = 'user'
@@ -18,27 +20,33 @@ ROLE_CHOICES = [
 class User(AbstractUser):
     username = models.CharField(
         verbose_name='Имя',
-        max_length=100,
+        max_length=150,
         null=True,
+        blank=True,
         unique=True
     )
     email = models.EmailField(
         verbose_name='Адрес электронной почты',
-        max_length=100,
+        max_length=254,
         unique=True,
         blank=False,
         null=False
     )
     role = models.CharField(
-        'Роль',
-        max_length=100,
+        verbose_name='Роль',
+        max_length=10,
         choices=ROLE_CHOICES,
         default=USER,
         blank=True
     )
+    is_superuser = models.BooleanField(
+        default=False,
+        verbose_name='Суперпользователь'
+    )
     bio = models.TextField(
-        'Био',
+        verbose_name='Биография',
         blank=True,
+        null=True
     )
     first_name = models.CharField(
         'Имя',
@@ -50,7 +58,10 @@ class User(AbstractUser):
         max_length=100,
         blank=True
     )
-
+    email_is_verified = models.BooleanField(
+        default=False,
+        verbose_name='Проверен ли е-мейл'
+    )
 
     @property
     def is_user(self):
@@ -72,6 +83,9 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+    def get_hash(self):
+        constant_data = str(self.id) + str(self.date_joined)
+        return hashlib.md5(constant_data.encode()).hexdigest()
 
 
 class Category(models.Model):
@@ -144,6 +158,7 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class GenreTitle(models.Model):
     title = models.ForeignKey(
