@@ -1,56 +1,56 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, viewsets, mixins, status
-from rest_framework.decorators import api_view, action
+from rest_framework import filters, viewsets, status
+from rest_framework.decorators import api_view, action, permission_classes
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
 from django.db.models import Avg
 
 from .serializers import get_tokens_for_user, UserRegistrationSerializer
-from .serializers import DummySerializer
 from reviews.models import User, Title, Category, Review, Genre
 from .filtres import TitleFilter
-from .mixins import ModelMixinSet
-from .permissions import (AdminModeratorAuthorPermission, AdminOnly,
-                          IsAdminUserOrReadOnly)
-from .serializers import (CategorySerializer, CommentSerializer,
-                          GenreSerializer,
-                          ReviewSerializer,
-                          TitleReadSerializer,
-                          TitleWriteSerializer,
-                          UserSerializer
-                          )
+from .mixins import ModelMixinSet, CreateViewSet
+from .permissions import (
+    AdminModeratorAuthorPermission,
+    AdminOnly,
+    IsAdminUserOrReadOnly,
+)
+from .serializers import (
+    CategorySerializer,
+    CommentSerializer,
+    GenreSerializer,
+    ReviewSerializer,
+    TitleReadSerializer,
+    TitleWriteSerializer,
+    UserSerializer,
+    UserWithoutRoleSerializer,
+)
 
 
-class UserRegistrationViewSet(
-    mixins.CreateModelMixin, viewsets.GenericViewSet
-):
+class UserRegistrationViewSet(CreateViewSet):
     serializer_class = UserRegistrationSerializer
     queryset = User.objects.all()
-
-
-class DummyViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
-    serializer_class = DummySerializer
+    permission_classes = (permissions.AllowAny,)
 
 
 @api_view(['POST'])
+@permission_classes((permissions.AllowAny,))
 def get_token(request):
     for arg in ('username', 'confirmation_code'):
         if not request.data.get(arg):
             return Response(
-                {arg: ["This field is required."]},
-                status=status.HTTP_400_BAD_REQUEST
+                {arg: ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST,
             )
     user = get_object_or_404(User, username=request.data['username'])
     if request.data['confirmation_code'] == user.get_hash():
-        user.email_is_verified = True
+        user.is_active = True
         user.save()
         return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
     return Response(
         f'Confirmation code {request.data["confirmation_code"]} is  incorrect!'
         ' Be sure to request it again',
-        status=status.HTTP_400_BAD_REQUEST
+        status=status.HTTP_400_BAD_REQUEST,
     )
 
 
@@ -59,7 +59,7 @@ class CategoryViewSet(ModelMixinSet):
     serializer_class = CategorySerializer
     permission_classes = [IsAdminUserOrReadOnly]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
-    search_fields = ('name', )
+    search_fields = ('name',)
     lookup_field = 'slug'
 
 
@@ -68,14 +68,12 @@ class GenreViewSet(ModelMixinSet):
     serializer_class = GenreSerializer
     permission_classes = (IsAdminUserOrReadOnly,)
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
-    search_fields = ('name', )
+    search_fields = ('name',)
     lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.annotate(
-        rating=Avg('reviews__score')
-    ).all()
+    queryset = Title.objects.annotate(rating=Avg('reviews__score')).all()
     permission_classes = [IsAdminUserOrReadOnly]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     filterset_class = TitleFilter
@@ -91,15 +89,11 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = (AdminModeratorAuthorPermission,)
 
     def get_queryset(self):
-        review = get_object_or_404(
-            Review,
-            id=self.kwargs.get('review_id'))
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
         return review.comments.all()
 
     def perform_create(self, serializer):
-        review = get_object_or_404(
-            Review,
-            id=self.kwargs.get('review_id'))
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
         serializer.save(author=self.request.user, review=review)
 
 
@@ -108,22 +102,25 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [AdminModeratorAuthorPermission]
 
     def get_queryset(self):
-        title = get_object_or_404(
-            Title,
-            id=self.kwargs.get('title_id'))
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
         return title.reviews.all()
 
     def perform_create(self, serializer):
-        title = get_object_or_404(
-            Title,
-            id=self.kwargs.get('title_id'))
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
         serializer.save(author=self.request.user, title=title)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (AdminOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
+    lookup_field = 'username'
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = False
+        return self.update(request, *args, **kwargs)
 
     @action(methods=['get', 'patch'], detail=False, url_path='me')
     def my_profile(self, request):
@@ -132,25 +129,18 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(self.serializer_class(user).data)
 
         parsed_data = {
-            field: self.request.data.get(field) for field in (
-                'username', 'email', 'first_name', 'last_name', 'bio'
-            ) if self.request.data.get(field)
+            field: self.request.data.get(field)
+            for field in (
+                'username',
+                'email',
+                'first_name',
+                'last_name',
+                'bio',
+            )
+            if self.request.data.get(field)
         }
-        serializer = self.serializer_class(
-            instance=user, data=parsed_data, partial=True
-        )
+        serializer = UserWithoutRoleSerializer(instance=user, data=parsed_data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-# class MyAccountViewSet(viewsets.ModelViewSet):
-#     serializer_class = MyAccountSerializer
-#     
-
-#     def list(self, request, *args, **kwargs):
-#         instance = request.user
-#         serializer = self.get_serializer(instance)
-#         return Response(serializer.data)

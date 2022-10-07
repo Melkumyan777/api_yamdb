@@ -2,20 +2,29 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.exceptions import ValidationError
 from .email import send_token
-from reviews.models import User, Title, Category, Comment, Genre, Review
+from reviews.models import (
+    User,
+    Title,
+    Category,
+    Comment,
+    Genre,
+    Review,
+    ROLE_CHOICES,
+)
 from django.shortcuts import get_object_or_404
-
-
-class DummySerializer(serializers.ModelSerializer):
-    class Meta:
-        fields = ('name', 'year')
-        model = Title
+from rest_framework.validators import UniqueValidator
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField()
-    username = serializers.SlugField()
+    email = serializers.EmailField(
+        validators=[UniqueValidator(User.objects.all())],
+        required=True,
+    )
+    username = serializers.SlugField(
+        validators=[UniqueValidator(User.objects.all())],
+        required=True,
+    )
 
     def create(self, validated_data):
         user = User.objects.create(
@@ -40,7 +49,6 @@ def get_tokens_for_user(user):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-
     class Meta:
         exclude = ['id']
         model = Category
@@ -48,7 +56,6 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class GenreSerializer(serializers.ModelSerializer):
-
     class Meta:
         exclude = ['id']
         model = Genre
@@ -57,10 +64,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class TitleReadSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
-    genre = GenreSerializer(
-        read_only=True,
-        many=True
-    )
+    genre = GenreSerializer(read_only=True, many=True)
     rating = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -70,13 +74,10 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
 class TitleWriteSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
-        queryset=Category.objects.all(),
-        slug_field='slug'
+        queryset=Category.objects.all(), slug_field='slug'
     )
     genre = serializers.SlugRelatedField(
-        queryset=Genre.objects.all(),
-        slug_field='slug',
-        many=True
+        queryset=Genre.objects.all(), slug_field='slug', many=True
     )
 
     class Meta:
@@ -85,13 +86,9 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    title = serializers.SlugRelatedField(
-        slug_field='Name',
-        read_only=True
-    )
+    title = serializers.SlugRelatedField(slug_field='Name', read_only=True)
     author = serializers.SlugRelatedField(
-        slug_field='Username',
-        read_only=True
+        slug_field='Username', read_only=True
     )
 
     def validate_score(self, value):
@@ -117,13 +114,9 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    review = serializers.SlugRelatedField(
-        slug_field='text',
-        read_only=True
-    )
+    review = serializers.SlugRelatedField(slug_field='text', read_only=True)
     author = serializers.SlugRelatedField(
-        slug_field='username',
-        read_only=True
+        slug_field='username', read_only=True
     )
 
     class Meta:
@@ -133,13 +126,39 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
 
-    # role = serializers.ReadOnlyField()
-    # username = serializers.CharField()
-    # email = serializers.EmailField()
-    # first_name = serializers.CharField()
-    # last_name = serializers.CharField()
-    # bio = serializers.CharField()
+    username = serializers.CharField(
+        validators=[UniqueValidator(User.objects.all())],
+        required=True,
+    )
+    email = serializers.EmailField(
+        validators=[UniqueValidator(User.objects.all())],
+        required=True,
+    )
+    role = serializers.ChoiceField(choices=ROLE_CHOICES, required=False)
 
     class Meta:
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
         model = User
+
+
+class UserWithoutRoleSerializer(UserSerializer):
+    class Meta:
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+        )
+        model = User
+
+    def validate(self, data):
+        print(data)
+        return data
