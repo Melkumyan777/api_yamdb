@@ -1,15 +1,17 @@
 from django.shortcuts import get_object_or_404
-from .serializers import get_tokens_for_user, UserRegistrationSerializer
-from reviews.models import User
 from rest_framework import filters, viewsets, mixins, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .serializers import get_tokens_for_user, UserRegistrationSerializer
+from reviews.models import User
 
-class UserRegistrationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+
+class UserRegistrationViewSet(
+    mixins.CreateModelMixin, viewsets.GenericViewSet
+):
     serializer_class = UserRegistrationSerializer
     queryset = User.objects.all()
-    print()
 
 
 @api_view(['POST'])
@@ -21,6 +23,7 @@ def get_token(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
     user = get_object_or_404(User, username=request.data['username'])
+    print(user.get_hash())
     if request.data['confirmation_code'] == user.get_hash():
         user.email_is_verified = True
         user.save()
