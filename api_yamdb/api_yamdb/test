@@ -1,8 +1,0 @@
-import jwt
-from django.conf import settings
-print(settings)
-
-encoded_jwt = jwt.encode({"some": "payload"}, settings.TOKEN_SECRET, algorithm="HS256")
-print(encoded_jwt)
-d = jwt.decode(encoded_jwt, settings.TOKEN_SECRET, algorithms=["HS256"])
-print(d)
