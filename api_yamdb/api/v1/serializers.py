@@ -38,6 +38,7 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
+
 class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -70,11 +71,11 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class TitleWriteSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
-        slug_field='Slug'
+        slug_field='slug'
     )
     genre = serializers.SlugRelatedField(
         queryset=Genre.objects.all(),
-        slug_field='Slug',
+        slug_field='slug',
         many=True
     )
 
@@ -94,7 +95,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     def validate_score(self, value):
-        if 0 > value > 10:
+        if value <= 0 or value >= 10:
             raise serializers.ValidationError('Оценка')
         return value
 
@@ -128,3 +129,17 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         fields = '__all__'
         model = Comment
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    # role = serializers.ReadOnlyField()
+    # username = serializers.CharField()
+    # email = serializers.EmailField()
+    # first_name = serializers.CharField()
+    # last_name = serializers.CharField()
+    # bio = serializers.CharField()
+
+    class Meta:
+        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        model = User

@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets, mixins, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
@@ -17,7 +17,10 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           GenreSerializer,
                           ReviewSerializer,
                           TitleReadSerializer,
-                          TitleWriteSerializer)
+                          TitleWriteSerializer,
+                          UserSerializer
+                          )
+
 
 class UserRegistrationViewSet(
     mixins.CreateModelMixin, viewsets.GenericViewSet
@@ -115,3 +118,39 @@ class ReviewViewSet(viewsets.ModelViewSet):
             Title,
             id=self.kwargs.get('title_id'))
         serializer.save(author=self.request.user, title=title)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    @action(methods=['get', 'patch'], detail=False, url_path='me')
+    def my_profile(self, request):
+        user = self.request.user
+        if request.method == 'GET':
+            return Response(self.serializer_class(user).data)
+
+        parsed_data = {
+            field: self.request.data.get(field) for field in (
+                'username', 'email', 'first_name', 'last_name', 'bio'
+            ) if self.request.data.get(field)
+        }
+        serializer = self.serializer_class(
+            instance=user, data=parsed_data, partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# class MyAccountViewSet(viewsets.ModelViewSet):
+#     serializer_class = MyAccountSerializer
+#     
+
+#     def list(self, request, *args, **kwargs):
+#         instance = request.user
+#         serializer = self.get_serializer(instance)
+#         return Response(serializer.data)
