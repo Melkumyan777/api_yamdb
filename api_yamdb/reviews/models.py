@@ -21,9 +21,9 @@ class User(AbstractUser):
     username = models.CharField(
         verbose_name='Имя',
         max_length=150,
-        null=True,
-        blank=True,
-        unique=True
+        unique=True,
+        null=False,
+        blank=False
     )
     email = models.EmailField(
         verbose_name='Адрес электронной почты',
@@ -38,10 +38,6 @@ class User(AbstractUser):
         choices=ROLE_CHOICES,
         default=USER,
         blank=True
-    )
-    is_superuser = models.BooleanField(
-        default=False,
-        verbose_name='Суперпользователь'
     )
     bio = models.TextField(
         verbose_name='Биография',
