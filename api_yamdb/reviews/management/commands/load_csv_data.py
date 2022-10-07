@@ -4,57 +4,34 @@ from django.core.management import BaseCommand
 from reviews.models import Review, Comment, User
 from reviews.models import Category, Genre, Title, GenreTitle
 
-PATH = "static/data/"
+DICT = {
+    User: 'users.csv',
+    Category: 'category.csv',
+    Genre: 'genre.csv',
+    Title: 'titles.csv',
+    Review: 'review.csv',
+    Comment: 'comments.csv',
+    GenreTitle: 'genre_title.csv'
+}
 
 
 class Command(BaseCommand):
     help = 'Загрузка данных из static/data'
 
     def handle(self, *args, **options):
-        reader = DictReader(open(f'{PATH}/users.csv', encoding='utf-8'))
-        User.objects.all().delete()
-        for row in reader:
-            user = User(id=row['id'], username=row['username'],
-                        email=row['email'], role=['role'], bio=row['bio'],
-                        first_name=row['first_name'],
-                        last_name=row['last_name'])
-            user.save()
+        for model in DICT:
+            if model.objects.exists():
+                print('Данные уже загружены в базу!')
+                return 'Очистите базу при помощи комманды delete_csv_data'
 
-        reader = DictReader(open(f'{PATH}/category.csv', encoding='utf-8'))
-        Category.objects.all().delete()
-        for row in reader:
-            category = Category(id=row['id'], name=row['name'],
-                                slug=row['slug'])
-            category.save()
-
-        reader = DictReader(open(f'{PATH}/genre.csv', encoding='utf-8'))
-        Genre.objects.all().delete()
-        for row in reader:
-            genre = Genre(id=row['id'], name=row['name'], slug=row['slug'])
-            genre.save()
-
-        reader = DictReader(open(f'{PATH}/titles.csv', encoding='utf-8'))
-        for row in reader:
-            title = Title(id=row['id'], name=row['name'], year=row['year'],
-                          category_id=row['category'])
-            title.save()
-
-        reader = DictReader(open(f'{PATH}/review.csv', encoding='utf-8'))
-        for row in reader:
-            review = Review(id=row['id'], title_id=row['title_id'],
-                            text=row['text'], author_id=row['author'],
-                            score=row['score'], pub_date=row['pub_date'])
-            review.save()
-
-        reader = DictReader(open(f'{PATH}/comments.csv', encoding='utf-8'))
-        for row in reader:
-            comment = Comment(id=row['id'], review_id=row['review_id'],
-                              text=row['text'], author_id=row['author'],
-                              pub_date=row['pub_date'])
-            comment.save()
-
-        reader = DictReader(open(f'{PATH}/genre_title.csv', encoding='utf-8'))
-        for row in reader:
-            genre_title = GenreTitle(id=row['id'], title_id=row['title_id'],
-                                     genre_id=row['genre_id'])
-            genre_title.save()
+        print('Загрузка данных...')
+        for model in DICT:
+            with open(f'static/data/{DICT[model]}', encoding='utf-8') as ifile:
+                reader = DictReader(ifile)
+                for row in reader:
+                    if 'category' in row:
+                        row['category_id'] = row.pop('category')
+                    if 'author' in row:
+                        row['author_id'] = row.pop('author')
+                    data = model(**row)
+                    data.save()
