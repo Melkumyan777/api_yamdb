@@ -3,6 +3,7 @@ from rest_framework import filters, viewsets, mixins, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .email import send_token
 from .serializers import get_tokens_for_user, UserRegistrationSerializer
 from reviews.models import User
 
@@ -12,6 +13,15 @@ class UserRegistrationViewSet(
 ):
     serializer_class = UserRegistrationSerializer
     queryset = User.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        user = User.objects.get(username=serializer.validated_data['username'])
+        send_token(user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 @api_view(['POST'])
@@ -23,7 +33,6 @@ def get_token(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
     user = get_object_or_404(User, username=request.data['username'])
-    print(user.get_hash())
     if request.data['confirmation_code'] == user.get_hash():
         user.email_is_verified = True
         user.save()

@@ -151,3 +151,9 @@ media/
 # файлы для тестирования на локальном компьютере
 test.py
 requisites.txt
+
+# env variables
+.env
+
+# email-to-file directory
+sent_email/
