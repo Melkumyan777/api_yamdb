@@ -1,12 +1,14 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
-from reviews.models import User
+
+from .email import send_token
+from reviews.models import User, Title
 
 
-# class UserRegistrationSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ('email', 'username')
+class DummySerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ('name', 'year')
+        model = Title
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -19,6 +21,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             email=validated_data['email'],
         )
+        send_token(user)
         return user
 
     class Meta:
