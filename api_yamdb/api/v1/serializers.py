@@ -84,7 +84,8 @@ class ReviewSerializer(serializers.ModelSerializer):
     title = serializers.SlugRelatedField(slug_field='name', read_only=True)
     author = serializers.SlugRelatedField(
         default=serializers.CurrentUserDefault(),
-        slug_field='username', read_only=True
+        slug_field='username',
+        read_only=True,
     )
 
     def validate_score(self, value):
@@ -132,17 +133,26 @@ class UserSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio',
-                  'role',)
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
         model = User
 
 
 class UserWithoutRoleSerializer(UserSerializer):
     class Meta:
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio')
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
         model = User
         read_only_fields = ('role',)
-
-    def validate(self, data):
-        print(data)
-        return data
