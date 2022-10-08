@@ -48,7 +48,11 @@ class GenreViewSet(ModelMixinSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.annotate(rating=Avg('reviews__score')).all().order_by('name')
+    queryset = (
+        Title.objects.annotate(rating=Avg('reviews__score'))
+        .all()
+        .order_by('name')
+    )
     permission_classes = [IsAdminUserOrReadOnly]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     filterset_class = TitleFilter
@@ -107,11 +111,11 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         if request.method == "PATCH":
             user = get_object_or_404(User, id=request.user.id)
-            serializer = UserSerializer(
-                user,
-                data=request.data,
-                partial=True
-            )
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            if user.is_user and 'role' in request.data:
+                serializer = UserWithoutRoleSerializer(
+                    user, data=request.data, partial=True
+                )
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -125,8 +129,7 @@ def register_user(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     user = get_object_or_404(
-        User,
-        username=serializer.validated_data['username']
+        User, username=serializer.validated_data['username']
     )
     confirmation_code = default_token_generator.make_token(user)
     send_mail(
