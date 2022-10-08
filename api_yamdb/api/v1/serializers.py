@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.exceptions import ValidationError
-from .email import send_token
 from reviews.models import (
     User,
     Title,
@@ -9,7 +8,6 @@ from reviews.models import (
     Comment,
     Genre,
     Review,
-    ROLE_CHOICES,
 )
 from django.shortcuts import get_object_or_404
 from rest_framework.validators import UniqueValidator
@@ -25,14 +23,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validators=[UniqueValidator(User.objects.all())],
         required=True,
     )
-
-    def create(self, validated_data):
-        user = User.objects.create(
-            username=validated_data['username'],
-            email=validated_data['email'],
-        )
-        send_token(user)
-        return user
 
     def validate_username(self, value):
         if value == 'me':
@@ -93,11 +83,12 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     title = serializers.SlugRelatedField(slug_field='name', read_only=True)
     author = serializers.SlugRelatedField(
+        default=serializers.CurrentUserDefault(),
         slug_field='username', read_only=True
     )
 
     def validate_score(self, value):
-        if value <= 0 or value >= 10:
+        if value <= 0 or value >= 11:
             raise serializers.ValidationError('Оценка')
         return value
 
@@ -139,30 +130,18 @@ class UserSerializer(serializers.ModelSerializer):
         validators=[UniqueValidator(User.objects.all())],
         required=True,
     )
-    role = serializers.ChoiceField(choices=ROLE_CHOICES, required=False)
 
     class Meta:
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role',
-        )
+        fields = ('username', 'email', 'first_name', 'last_name', 'bio',
+                  'role',)
         model = User
 
 
 class UserWithoutRoleSerializer(UserSerializer):
     class Meta:
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-        )
+        fields = ('username', 'email', 'first_name', 'last_name', 'bio')
         model = User
+        read_only_fields = ('role',)
 
     def validate(self, data):
         print(data)
