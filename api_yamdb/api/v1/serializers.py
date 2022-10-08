@@ -34,6 +34,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         send_token(user)
         return user
 
+    def validate_username(self, value):
+        if value == 'me':
+            raise serializers.ValidationError('Запрещенное имя пользователя!')
+        return value
+
     class Meta:
         model = User
         fields = ('email', 'username')
@@ -86,9 +91,9 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    title = serializers.SlugRelatedField(slug_field='Name', read_only=True)
+    title = serializers.SlugRelatedField(slug_field='name', read_only=True)
     author = serializers.SlugRelatedField(
-        slug_field='Username', read_only=True
+        slug_field='username', read_only=True
     )
 
     def validate_score(self, value):
