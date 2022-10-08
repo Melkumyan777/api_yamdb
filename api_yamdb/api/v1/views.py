@@ -30,7 +30,7 @@ from .serializers import (
 
 
 class CategoryViewSet(ModelMixinSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.all().order_by('name')
     serializer_class = CategorySerializer
     permission_classes = [IsAdminUserOrReadOnly]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
@@ -39,7 +39,7 @@ class CategoryViewSet(ModelMixinSet):
 
 
 class GenreViewSet(ModelMixinSet):
-    queryset = Genre.objects.all()
+    queryset = Genre.objects.all().order_by('name')
     serializer_class = GenreSerializer
     permission_classes = (IsAdminUserOrReadOnly,)
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
@@ -48,7 +48,7 @@ class GenreViewSet(ModelMixinSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.annotate(rating=Avg('reviews__score')).all()
+    queryset = Title.objects.annotate(rating=Avg('reviews__score')).all().order_by('name')
     permission_classes = [IsAdminUserOrReadOnly]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     filterset_class = TitleFilter
@@ -65,7 +65,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
-        return review.comments.all()
+        return review.comments.all().order_by('-pub_date')
 
     def perform_create(self, serializer):
         review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
