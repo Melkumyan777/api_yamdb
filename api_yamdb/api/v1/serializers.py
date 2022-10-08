@@ -93,11 +93,12 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     title = serializers.SlugRelatedField(slug_field='name', read_only=True)
     author = serializers.SlugRelatedField(
+        default=serializers.CurrentUserDefault(),
         slug_field='username', read_only=True
     )
 
     def validate_score(self, value):
-        if value <= 0 or value >= 10:
+        if value <= 0 or value >= 11:
             raise serializers.ValidationError('Оценка')
         return value
 
