@@ -1,3 +1,5 @@
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets, status
 from rest_framework.decorators import api_view, action, permission_classes
@@ -9,7 +11,7 @@ from django.db.models import Avg
 from .serializers import get_tokens_for_user, UserRegistrationSerializer
 from reviews.models import User, Title, Category, Review, Genre
 from .filtres import TitleFilter
-from .mixins import ModelMixinSet, CreateViewSet
+from .mixins import ModelMixinSet
 from .permissions import (
     AdminModeratorAuthorPermission,
     AdminOnly,
@@ -25,33 +27,6 @@ from .serializers import (
     UserSerializer,
     UserWithoutRoleSerializer,
 )
-
-
-class UserRegistrationViewSet(CreateViewSet):
-    serializer_class = UserRegistrationSerializer
-    queryset = User.objects.all()
-    permission_classes = (permissions.AllowAny,)
-
-
-@api_view(['POST'])
-@permission_classes((permissions.AllowAny,))
-def get_token(request):
-    for arg in ('username', 'confirmation_code'):
-        if not request.data.get(arg):
-            return Response(
-                {arg: ['This field is required.']},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-    user = get_object_or_404(User, username=request.data['username'])
-    if request.data['confirmation_code'] == user.get_hash():
-        user.is_active = True
-        user.save()
-        return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
-    return Response(
-        f'Confirmation code {request.data["confirmation_code"]} is  incorrect!'
-        ' Be sure to request it again',
-        status=status.HTTP_400_BAD_REQUEST,
-    )
 
 
 class CategoryViewSet(ModelMixinSet):
@@ -118,29 +93,75 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ('username',)
     lookup_field = 'username'
 
-    def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = False
-        return self.update(request, *args, **kwargs)
-
-    @action(methods=['get', 'patch'], detail=False, url_path='me')
+    @action(
+        methods=['get', 'patch'],
+        detail=False,
+        url_path='me',
+        permission_classes=(permissions.IsAuthenticated,),
+        serializer_class=UserWithoutRoleSerializer,
+    )
     def my_profile(self, request):
-        user = self.request.user
-        if request.method == 'GET':
-            return Response(self.serializer_class(user).data)
-
-        parsed_data = {
-            field: self.request.data.get(field)
-            for field in (
-                'username',
-                'email',
-                'first_name',
-                'last_name',
-                'bio',
+        user = request.user
+        if request.method == "GET":
+            serializer = UserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        if request.method == "PATCH":
+            user = get_object_or_404(User, id=request.user.id)
+            serializer = UserSerializer(
+                user,
+                data=request.data,
+                partial=True
             )
-            if self.request.data.get(field)
-        }
-        serializer = UserWithoutRoleSerializer(instance=user, data=parsed_data)
-        if serializer.is_valid():
+            serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def register_user(request):
+    serializer = UserRegistrationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    user = get_object_or_404(
+        User,
+        username=serializer.validated_data['username']
+    )
+    confirmation_code = default_token_generator.make_token(user)
+    send_mail(
+        'Добро пожаловать на проект YamDB!',
+        (
+            'Поздравляем! Вы только что зарегистрировались на нашем сервисе. '
+            'Для подтверждения регистрации пожалуйста нашему API POST-запрос, '
+            f'Содержащий код подтверждения: "{confirmation_code}"\n'
+            'Если Вы не регистрировались, проигнорируйте это письмо.\n\n'
+            'С уважением, команда YamDB'
+        ),
+        'registration@yamdb.fake',
+        [user.email],
+        fail_silently=False,
+    )
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes((permissions.AllowAny,))
+def get_token(request):
+    for arg in ('username', 'confirmation_code'):
+        if not request.data.get(arg):
+            return Response(
+                {arg: ['This field is required.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    user = get_object_or_404(User, username=request.data['username'])
+    if request.data['confirmation_code'] == user.get_hash():
+        user.is_active = True
+        user.save()
+        return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
+    return Response(
+        f'Confirmation code {request.data["confirmation_code"]} is  incorrect!'
+        ' Be sure to request it again',
+        status=status.HTTP_400_BAD_REQUEST,
+    )
