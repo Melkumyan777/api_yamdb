@@ -139,16 +139,13 @@ def register_user(request):
     if created:
         return Response(serializer.data, status=status.HTTP_200_OK)
     if not created and not user.activated:
-        return Response(
-            'Код подтверждения отправлен заново.', status=status.HTTP_200_OK
-        )
-    return Response(
-        (
+        message = 'Код подтверждения отправлен заново.'
+    else:
+        message = (
             'Ваша запись уже активна! Код отправлен заново.'
-            'Пожалуйста, больше не теряйте его.'
-        ),
-        status=status.HTTP_400_BAD_REQUEST,
-    )
+            'Пожалуйста, больше не теряйте его.',
+        )
+    return Response(message, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
