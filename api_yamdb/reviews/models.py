@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import (MaxValueValidator, MinValueValidator,
+                                    RegexValidator)
 from django.db import models
 import hashlib
 
@@ -17,7 +18,9 @@ ROLE_CHOICES = [
 
 
 class User(AbstractUser):
+    USERNAME_VALIDATOR = RegexValidator(r'^[\w.@+-]+\z')
     username = models.CharField(
+        validators=[USERNAME_VALIDATOR],
         verbose_name='Имя',
         max_length=150,
         unique=True,
@@ -42,8 +45,8 @@ class User(AbstractUser):
         verbose_name='Активирован ли', default=False
     ),
     bio = models.TextField(verbose_name='Биография', blank=True, null=True)
-    first_name = models.CharField('Имя', max_length=100, blank=True)
-    last_name = models.CharField('Фамилия', max_length=100, blank=True)
+    first_name = models.CharField('Имя', max_length=150, blank=True)
+    last_name = models.CharField('Фамилия', max_length=150, blank=True)
 
     @property
     def is_user(self):
@@ -75,10 +78,13 @@ class User(AbstractUser):
 
 
 class Category(models.Model):
-    name = models.CharField(verbose_name='Название категории', max_length=100)
+    SLUG_VALIDATOR = RegexValidator(r'^[-a-zA-Z0-9_]+$')
+    name = models.CharField(verbose_name='Название категории', max_length=256)
     slug = models.SlugField(
+        validators=[SLUG_VALIDATOR],
         verbose_name='Слаг категории',
-        unique=True,
+        max_length=50,
+        unique=True
     )
 
     class Meta:
@@ -90,10 +96,11 @@ class Category(models.Model):
 
 
 class Genre(models.Model):
-    name = models.CharField(verbose_name='Имя жанра', max_length=100)
+    name = models.CharField(verbose_name='Имя жанра', max_length=256)
     slug = models.SlugField(
         verbose_name='Слаг жанра',
-        unique=True,
+        max_length=50,
+        unique=True
     )
 
     class Meta:
@@ -105,7 +112,7 @@ class Genre(models.Model):
 
 
 class Title(models.Model):
-    name = models.CharField(verbose_name='Название', max_length=100)
+    name = models.CharField(verbose_name='Название', max_length=256)
     year = models.IntegerField(
         verbose_name='Дата выхода', validators=[year_validator]
     )

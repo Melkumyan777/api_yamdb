@@ -57,8 +57,9 @@ class TitleReadSerializer(serializers.ModelSerializer):
     rating = serializers.IntegerField(read_only=True)
 
     class Meta:
-        fields = '__all__'
         model = Title
+        fields = '__all__'
+        read_only_fields = ['id', 'name', 'year', 'description']
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -83,8 +84,8 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     def validate_score(self, value):
-        if value <= 0 or value >= 11:
-            raise serializers.ValidationError('Оценка')
+        if 0 >= value >= 11:
+            raise serializers.ValidationError('Оценка должна быть от 1 до 10!')
         return value
 
     def validate(self, data):
