@@ -154,7 +154,7 @@ def get_token(request):
     for arg in ('username', 'confirmation_code'):
         if not request.data.get(arg):
             return Response(
-                {arg: ['This field is required.']},
+                {arg: ['Это обязательное поле.']},
                 status=status.HTTP_400_BAD_REQUEST,
             )
     user = get_object_or_404(User, username=request.data['username'])
@@ -166,6 +166,6 @@ def get_token(request):
         return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
     return Response(
         f'Неверный код подтверждения: {request.data["confirmation_code"]}\n'
-        'Необходимо сгенерировать новый код.',
+        'Необходимо сгенерировать новый код, или найти правильный.',
         status=status.HTTP_400_BAD_REQUEST,
     )

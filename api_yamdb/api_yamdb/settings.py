@@ -26,15 +26,19 @@ logging.basicConfig(
 )
 load_dotenv(find_dotenv())
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs')
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY', 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
+)
 TOKEN_SECRET = os.getenv(
     'TOKEN_SECRET_KEY',
-    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzb21lIjoicGF5bG9hZCJ9.Joh1R2dYzkRvDkqv3sygm5YyK8Gi4ShZqbhK2gxcs2U',
+    ('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzb21lIjoicGF5bG9hZCJ9.Joh1R2dY'
+     'zkRvDkqv3sygm5YyK8Gi4ShZqbhK2gxcs2U')
 )
-if not TOKEN_SECRET:
+if not all([TOKEN_SECRET, SECRET_KEY]):
     message = (
         'Не удалось загрузить все переменные из окружения. Переменные:\n'
-        f'TOKEN_SECRET_KEY: {TOKEN_SECRET}'
+        f'TOKEN_SECRET_KEY: {TOKEN_SECRET}\n'
+        f'SECRET_KEY: {SECRET_KEY}'
     )
     logging.critical(message)
     sys.exit(message)

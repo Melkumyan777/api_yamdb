@@ -84,7 +84,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     def validate_score(self, value):
-        if 0 >= value >= 11:
+        if 1 > value > 10:
             raise serializers.ValidationError('Оценка должна быть от 1 до 10!')
         return value
 
