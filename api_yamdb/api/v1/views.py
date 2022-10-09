@@ -135,19 +135,20 @@ def register_user(request):
     user, created = User.objects.get_or_create(
         username=data['username'], email=data['email']
     )
+    send_confirmation_email(user)
     if created:
-        send_confirmation_email(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
     if not created and not user.activated:
-        send_confirmation_email(user)
         return Response(
             'Код подтверждения отправлен заново.', status=status.HTTP_200_OK
         )
-    else:
-        return Response(
-            'Ваша запись уже активирована!',
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    return Response(
+        (
+            'Ваша запись уже активна! Код отправлен заново.'
+            'Пожалуйста, больше не теряйте его.'
+        ),
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 @api_view(['POST'])
