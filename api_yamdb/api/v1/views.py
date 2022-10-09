@@ -9,7 +9,7 @@ from django.db.models import Avg
 
 from .serializers import get_tokens_for_user, UserRegistrationSerializer
 from reviews.models import User, Title, Category, Review, Genre
-from .filtres import TitleFilter
+from .filters import TitleFilter
 from .mixins import ModelMixinSet
 from .permissions import (
     AdminModeratorAuthorPermission,
@@ -109,10 +109,10 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def my_profile(self, request):
         user = request.user
-        if request.method == "GET":
+        if request.method == 'GET':
             serializer = UserSerializer(user)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        if request.method == "PATCH":
+        if request.method == 'PATCH':
             user = get_object_or_404(User, id=request.user.id)
             serializer = UserSerializer(user, data=request.data, partial=True)
             if user.is_user and 'role' in request.data:
