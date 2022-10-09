@@ -57,6 +57,10 @@ class User(AbstractUser):
     def is_moderator(self):
         return self.role == MODERATOR
 
+    @property
+    def activated(self):
+        return self.is_active is True
+
     class Meta:
         ordering = ('id',)
         verbose_name = 'Пользователь'

@@ -1,5 +1,4 @@
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets, status
 from rest_framework.decorators import api_view, action, permission_classes
@@ -26,6 +25,11 @@ from .serializers import (
     TitleWriteSerializer,
     UserSerializer,
     UserWithoutRoleSerializer,
+)
+from .utils import (
+    get_user_or_false,
+    validate_request_data,
+    send_confirmation_email,
 )
 
 
@@ -125,28 +129,29 @@ class UserViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def register_user(request):
-    serializer = UserRegistrationSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-    user = get_object_or_404(
-        User, username=serializer.validated_data['username']
+    data = request.data
+    validate_request_data(data)
+    user = get_user_or_false(data)
+    if not user:
+        serializer = UserRegistrationSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        user = get_object_or_404(
+            User, username=serializer.validated_data['username']
+        )
+        send_confirmation_email(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    if not user.activated:
+        send_confirmation_email(user)
+    else:
+        return Response(
+            'Ваша запись уже активирована!',
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(
+        'Код активации отправлен заново. Пожалуйста, проверьте почту.',
+        status=status.HTTP_200_OK,
     )
-    confirmation_code = default_token_generator.make_token(user)
-    send_mail(
-        'Добро пожаловать на проект YamDB!',
-        (
-            'Поздравляем! Вы только что зарегистрировались на нашем сервисе. '
-            'Для подтверждения регистрации пожалуйста нашему API POST-запрос, '
-            f'Содержащий код подтверждения: "{confirmation_code}"\n'
-            'Если Вы не регистрировались, проигнорируйте это письмо.\n\n'
-            'С уважением, команда YamDB'
-        ),
-        'registration@yamdb.fake',
-        [user.email],
-        fail_silently=False,
-    )
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -159,12 +164,14 @@ def get_token(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
     user = get_object_or_404(User, username=request.data['username'])
-    if request.data['confirmation_code'] == user.get_hash():
+    if default_token_generator.check_token(
+        user, token=request.data['confirmation_code']
+    ):
         user.is_active = True
         user.save()
         return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
     return Response(
-        f'Confirmation code {request.data["confirmation_code"]} is  incorrect!'
-        ' Be sure to request it again',
+        f'Неверный код подтверждения: {request.data["confirmation_code"]}\n'
+        'Необходимо сгенерировать новый код.',
         status=status.HTTP_400_BAD_REQUEST,
     )
