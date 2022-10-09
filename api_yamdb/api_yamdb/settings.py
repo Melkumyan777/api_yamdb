@@ -8,8 +8,6 @@ from dotenv import load_dotenv, find_dotenv
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -27,14 +25,20 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(stream=sys.stdout)],
 )
 load_dotenv(find_dotenv())
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY', 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
+)
 TOKEN_SECRET = os.getenv(
     'TOKEN_SECRET_KEY',
-    'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzb21lIjoicGF5bG9hZCJ9.Joh1R2dYzkRvDkqv3sygm5YyK8Gi4ShZqbhK2gxcs2U',
+    ('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzb21lIjoicGF5bG9hZCJ9.Joh1R2dY'
+     'zkRvDkqv3sygm5YyK8Gi4ShZqbhK2gxcs2U')
 )
-if not TOKEN_SECRET:
+if not all([TOKEN_SECRET, SECRET_KEY]):
     message = (
         'Не удалось загрузить все переменные из окружения. Переменные:\n'
-        f'TOKEN_SECRET_KEY: {TOKEN_SECRET}'
+        f'TOKEN_SECRET_KEY: {TOKEN_SECRET}\n'
+        f'SECRET_KEY: {SECRET_KEY}'
     )
     logging.critical(message)
     sys.exit(message)
@@ -117,9 +121,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-RU'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
@@ -176,3 +180,4 @@ SIMPLE_JWT = {
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_mail')
+YAMDB_WELCOME_EMAIL_FROM = 'registration@yamdb.fake'

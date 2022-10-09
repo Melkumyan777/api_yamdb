@@ -13,16 +13,10 @@ from django.shortcuts import get_object_or_404
 from rest_framework.validators import UniqueValidator
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
+class UserRegistrationSerializer(serializers.Serializer):
 
-    email = serializers.EmailField(
-        validators=[UniqueValidator(User.objects.all())],
-        required=True,
-    )
-    username = serializers.SlugField(
-        validators=[UniqueValidator(User.objects.all())],
-        required=True,
-    )
+    email = serializers.EmailField(required=True)
+    username = serializers.SlugField(required=True)
 
     def validate_username(self, value):
         if value == 'me':
@@ -63,8 +57,9 @@ class TitleReadSerializer(serializers.ModelSerializer):
     rating = serializers.IntegerField(read_only=True)
 
     class Meta:
-        fields = '__all__'
         model = Title
+        fields = '__all__'
+        read_only_fields = ['id', 'name', 'year', 'description']
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -89,8 +84,8 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     def validate_score(self, value):
-        if value <= 0 or value >= 11:
-            raise serializers.ValidationError('Оценка')
+        if 1 > value > 10:
+            raise serializers.ValidationError('Оценка должна быть от 1 до 10!')
         return value
 
     def validate(self, data):

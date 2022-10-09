@@ -1,5 +1,4 @@
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets, status
 from rest_framework.decorators import api_view, action, permission_classes
@@ -10,7 +9,7 @@ from django.db.models import Avg
 
 from .serializers import get_tokens_for_user, UserRegistrationSerializer
 from reviews.models import User, Title, Category, Review, Genre
-from .filtres import TitleFilter
+from .filters import TitleFilter
 from .mixins import ModelMixinSet
 from .permissions import (
     AdminModeratorAuthorPermission,
@@ -26,6 +25,10 @@ from .serializers import (
     TitleWriteSerializer,
     UserSerializer,
     UserWithoutRoleSerializer,
+)
+from .utils import (
+    validate_request_data,
+    send_confirmation_email,
 )
 
 
@@ -106,10 +109,10 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def my_profile(self, request):
         user = request.user
-        if request.method == "GET":
+        if request.method == 'GET':
             serializer = UserSerializer(user)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        if request.method == "PATCH":
+        if request.method == 'PATCH':
             user = get_object_or_404(User, id=request.user.id)
             serializer = UserSerializer(user, data=request.data, partial=True)
             if user.is_user and 'role' in request.data:
@@ -125,28 +128,24 @@ class UserViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def register_user(request):
-    serializer = UserRegistrationSerializer(data=request.data)
+    data = request.data
+    validate_request_data(data)
+    serializer = UserRegistrationSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    serializer.save()
-    user = get_object_or_404(
-        User, username=serializer.validated_data['username']
+    user, created = User.objects.get_or_create(
+        username=data['username'], email=data['email']
     )
-    confirmation_code = default_token_generator.make_token(user)
-    send_mail(
-        'Добро пожаловать на проект YamDB!',
-        (
-            'Поздравляем! Вы только что зарегистрировались на нашем сервисе. '
-            'Для подтверждения регистрации пожалуйста нашему API POST-запрос, '
-            f'Содержащий код подтверждения: "{confirmation_code}"\n'
-            'Если Вы не регистрировались, проигнорируйте это письмо.\n\n'
-            'С уважением, команда YamDB'
-        ),
-        'registration@yamdb.fake',
-        [user.email],
-        fail_silently=False,
-    )
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    send_confirmation_email(user)
+    if created:
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    if not created and not user.activated:
+        message = 'Код подтверждения отправлен заново.'
+    else:
+        message = (
+            'Ваша запись уже активна! Код отправлен заново.'
+            'Пожалуйста, больше не теряйте его.',
+        )
+    return Response(message, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -155,16 +154,18 @@ def get_token(request):
     for arg in ('username', 'confirmation_code'):
         if not request.data.get(arg):
             return Response(
-                {arg: ['This field is required.']},
+                {arg: ['Это обязательное поле.']},
                 status=status.HTTP_400_BAD_REQUEST,
             )
     user = get_object_or_404(User, username=request.data['username'])
-    if request.data['confirmation_code'] == user.get_hash():
+    if default_token_generator.check_token(
+        user, token=request.data['confirmation_code']
+    ):
         user.is_active = True
         user.save()
         return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
     return Response(
-        f'Confirmation code {request.data["confirmation_code"]} is  incorrect!'
-        ' Be sure to request it again',
+        f'Неверный код подтверждения: {request.data["confirmation_code"]}\n'
+        'Необходимо сгенерировать новый код, или найти правильный.',
         status=status.HTTP_400_BAD_REQUEST,
     )
