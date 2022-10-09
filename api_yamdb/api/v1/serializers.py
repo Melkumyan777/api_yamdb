@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.validators import UniqueValidator
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
+class UserRegistrationSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
     username = serializers.SlugField(required=True)

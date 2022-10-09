@@ -27,7 +27,6 @@ from .serializers import (
     UserWithoutRoleSerializer,
 )
 from .utils import (
-    get_user_or_false,
     validate_request_data,
     send_confirmation_email,
 )
@@ -131,27 +130,24 @@ class UserViewSet(viewsets.ModelViewSet):
 def register_user(request):
     data = request.data
     validate_request_data(data)
-    user = get_user_or_false(data)
-    if not user:
-        serializer = UserRegistrationSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        user = get_object_or_404(
-            User, username=serializer.validated_data['username']
-        )
+    serializer = UserRegistrationSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    user, created = User.objects.get_or_create(
+        username=data['username'], email=data['email']
+    )
+    if created:
         send_confirmation_email(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    if not user.activated:
+    if not created and not user.activated:
         send_confirmation_email(user)
+        return Response(
+            'Код подтверждения отправлен заново.', status=status.HTTP_200_OK
+        )
     else:
         return Response(
             'Ваша запись уже активирована!',
             status=status.HTTP_400_BAD_REQUEST,
         )
-    return Response(
-        'Код активации отправлен заново. Пожалуйста, проверьте почту.',
-        status=status.HTTP_200_OK,
-    )
 
 
 @api_view(['POST'])
