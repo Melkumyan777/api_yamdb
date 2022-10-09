@@ -15,14 +15,8 @@ from rest_framework.validators import UniqueValidator
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(
-        validators=[UniqueValidator(User.objects.all())],
-        required=True,
-    )
-    username = serializers.SlugField(
-        validators=[UniqueValidator(User.objects.all())],
-        required=True,
-    )
+    email = serializers.EmailField(required=True)
+    username = serializers.SlugField(required=True)
 
     def validate_username(self, value):
         if value == 'me':
