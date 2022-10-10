@@ -40,7 +40,7 @@ def send_confirmation_email(user):
     confirmation_code = default_token_generator.make_token(user)
     send_mail(
         subject,
-        message(confirmation_code),
+        message.format(code=confirmation_code),
         from_email,
         [user.email],
         fail_silently=False,
